@@ -1,0 +1,11 @@
+Docs - 1200 LCD - TFT (LTDC)
+
+1. Enablas clock
+RCC_APB3ENR (460)
+LTDCEN: LTDC peripheral clock enable
+z njem enablas ltdc_ker_ck ki je: LTDC kernel clock used for LCD_CLK (pixel clock) generation
+more bit output tko da kej vec ne rabmo pocet
+// to trminata cel device (mogoce rabis interupt da to dosezes)
+
+2. Enablav vse porte na write mode rabis:
+I9, I12, I14, K7
