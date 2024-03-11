@@ -1,0 +1,3 @@
+../Core/Src/audio_record.c:111:6:AudioRecord_demo	2
+../Core/Src/audio_record.c:181:6:BSP_AUDIO_IN_TransferComplete_CallBack	7
+../Core/Src/audio_record.c:208:6:BSP_AUDIO_IN_HalfTransfer_CallBack	7
