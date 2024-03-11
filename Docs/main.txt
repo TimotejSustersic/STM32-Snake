@@ -1,0 +1,15 @@
+main {
+
+    while(true) {
+
+        switch
+            case 1: spil
+            case 2: game over
+    }
+}
+
+spil {
+
+}
+
+game over
