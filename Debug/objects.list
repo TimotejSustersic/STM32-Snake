@@ -3,6 +3,7 @@
 "./Core/Src/audio_record.o"
 "./Core/Src/dma.o"
 "./Core/Src/freertos.o"
+"./Core/Src/gameMain.o"
 "./Core/Src/lcd.o"
 "./Core/Src/main.o"
 "./Core/Src/mmc.o"

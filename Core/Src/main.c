@@ -30,6 +30,9 @@
 #include "retarget.h"
 #include "dma.h"
 
+// our main
+#include "gameMain.h"
+
 
 /* USER CODE END Includes */
 
@@ -59,8 +62,7 @@ const osThreadAttr_t defaultTask_attributes = {
 };
 /* USER CODE BEGIN PV */
 __IO uint32_t ButtonState = 0;
-uint32_t x_size;
-uint32_t y_size;
+
 uint16_t timer_val_start, timer_val_end;
 uint16_t elapsed_1st, elapsed_2nd, elapsed_3rd;
 
@@ -104,16 +106,9 @@ static void CPU_CACHE_Enable(void);
   */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
-
-
-  /* Configure the MPU attributes as Write Through */
-//  MPU_Config();
 
   /* Enable the CPU Cache */
-//  CPU_CACHE_Enable();
-
-  /* USER CODE END 1 */
+  // CPU_CACHE_Enable();
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -129,224 +124,24 @@ int main(void)
   */
   HAL_Init();
 
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock to 400 MHz */
   SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  //MX_GPIO_Init();
-  //MX_ADC3_Init();
-
-  /* USER CODE BEGIN 2 */
-  /* When system initialization is finished, Cortex-M7 could wakeup (when needed) the Cortex-M4  by means of
-        HSEM notification or by any D2 wakeup source (SEV,EXTI..)   */
-
+  BSP_PB_Init(BUTTON_USER_PIN, BUTTON_MODE_GPIO);
   BSP_LED_Init(LED_GREEN);
   BSP_LED_Init(LED_RED);
 
-  BSP_LED_Off(LED_GREEN);
+ 	srand(time(NULL));   // Initialization, should only be called once.
+	// HAL_IncTick();
 
-  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
-
-  /* Configure the User push-button in EXTI Mode */
-  BSP_PB_Init(BUTTON_USER, BUTTON_MODE_EXTI);
-
-  /* Configure TIM3 timebase */
-  Init_TIM3(&TIM3Handle);
-
-  /* Init UART3*/
-  if (USART3_Init(&UART3Handle) != HAL_OK){
-	  Error_Handler();
-  }
-  RetargetInit(&UART3Handle);
-
-
+  ////////////////////////////////////////////////////////
+  // LTDC INIT
+  ////////////////////////////////////////////////////////
   BSP_LCD_Init(0, LCD_ORIENTATION_LANDSCAPE);
   UTIL_LCD_SetFuncDriver(&LCD_Driver);
-  Display_InitialContent();
 
-  Display_InitialContent();
+  gameMain();
 
-  uint32_t color;
-  //BSP_LCD_ReadPixel(0, 479, 271, &color);
-
-
-
-  while (1){
-
-	  // Time first delay :
-
-	  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET);
-	  timer_val_start = __HAL_TIM_GET_COUNTER(&TIM3Handle);
-  	  HAL_Delay(50);
-	  timer_val_end = __HAL_TIM_GET_COUNTER(&TIM3Handle);
-	  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
-
-	  if (timer_val_end > timer_val_start)
-		  elapsed_1st = timer_val_end - timer_val_start;
-	  else
-		  elapsed_1st = timer_val_end + (65536-timer_val_start);
-
-	  BSP_LED_On(LED_GREEN);
-	  HAL_Delay(10);
-	  BSP_LED_Off(LED_GREEN);
-
-	  // Time second delay :
-
-	  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET);
-	  timer_val_start = __HAL_TIM_GET_COUNTER(&TIM3Handle);
-  	  HAL_Delay(25);
-	  timer_val_end = __HAL_TIM_GET_COUNTER(&TIM3Handle);
-	  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
-
-	  if (timer_val_end > timer_val_start)
-		  elapsed_2nd = timer_val_end - timer_val_start;
-	  else
-		  elapsed_2nd = timer_val_end + (65536-timer_val_start);
-
-	  BSP_LED_On(LED_RED);
-	  HAL_Delay(10);
-	  BSP_LED_Off(LED_RED);
-
-	  // Time third delay :
-
-	  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET);
-	  timer_val_start = __HAL_TIM_GET_COUNTER(&TIM3Handle);
-  	  HAL_Delay(10);
-	  timer_val_end = __HAL_TIM_GET_COUNTER(&TIM3Handle);
-	  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
-
-	  if (timer_val_end > timer_val_start)
-		  elapsed_3rd = timer_val_end - timer_val_start;
-	  else
-		  elapsed_3rd = timer_val_end + (65536-timer_val_start);
-
-	  BSP_LED_On(LED_RED);
-	  BSP_LED_On(LED_GREEN);
-	  HAL_Delay(10);
-
-
-
-	  UTIL_LCD_SetTextColor(UTIL_LCD_COLOR_GREEN);
-	  sprintf((char*)time_str1, "1st:%5dus  2nd:%5dus 3rd:%4dus", elapsed_1st, elapsed_2nd, elapsed_3rd);
-	  UTIL_LCD_DisplayStringAt(0, (y_size/2 + 25), (uint8_t *)time_str1, CENTER_MODE);
-	  printf("%s \n", time_str1);
-
-	  BSP_LED_Off(LED_RED);
-	  BSP_LED_Off(LED_GREEN);
-
-	  HAL_Delay(100);
-
-  }
-
-
-
-  /* USER CODE END 2 */
-
-  /* Init scheduler */
-  osKernelInitialize();
-
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
-
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
-  /* USER CODE END RTOS_SEMAPHORES */
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
-
-  /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
-
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
-
-  /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
-  /* USER CODE END RTOS_EVENTS */
-
-  /* Start scheduler */
-  osKernelStart();
-
-  /* We should never get here as control is now taken by the scheduler */
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
-  }
-  /* USER CODE END 3 */
-}
-
-
-
-
-/**
-  * @brief  Display main demo messages
-  * @param  None
-  * @retval None
-  */
-static void Display_InitialContent(void)
-{
-
-  BSP_LCD_GetXSize(0, &x_size);
-  BSP_LCD_GetYSize(0, &y_size);
-
-  UTIL_LCD_SetFont(&Font16);
-
-  /* Clear the LCD */
-  UTIL_LCD_SetBackColor(UTIL_LCD_COLOR_BLACK);
-  UTIL_LCD_Clear(UTIL_LCD_COLOR_BLACK);
-  BSP_LCD_FillRect(0, 0, 0, x_size, y_size, UTIL_LCD_COLOR_BLACK);
-
-  /* Set the LCD Text Color */
-  UTIL_LCD_SetTextColor(UTIL_LCD_COLOR_WHITE);
-
-  /* Display LCD messages */
-  UTIL_LCD_DisplayStringAt(0, 20, (uint8_t *)"STM32H750B BSP", CENTER_MODE);
-  UTIL_LCD_SetFont(&Font20);
-  UTIL_LCD_DisplayStringAt(0, 45, (uint8_t *)"Organizacija racunalniskih", CENTER_MODE);
-  UTIL_LCD_DisplayStringAt(0, 70, (uint8_t *)"sistemov", CENTER_MODE);
-
-
-  /* Draw Bitmap */
-  //UTIL_LCD_DrawBitmap((x_size - 80)/2, 65, (uint8_t *)stlogo);
-
-  UTIL_LCD_SetFont(&Font16);
-  UTIL_LCD_DisplayStringAt(0, y_size - 20, (uint8_t *)"Copyright (c) Pa3cio 2022", CENTER_MODE);
-
-  UTIL_LCD_SetFont(&Font20);
-  BSP_LCD_FillRect(0, 0, y_size/2 - 35, x_size, 120, UTIL_LCD_COLOR_BLUE);
-  UTIL_LCD_SetTextColor(UTIL_LCD_COLOR_WHITE);
-  UTIL_LCD_SetBackColor(UTIL_LCD_COLOR_BLUE);
-  UTIL_LCD_DisplayStringAt(0, y_size/2 - 25 , (uint8_t *)"LCD test", CENTER_MODE);
-
-  //sprintf(desc,"%s example", BSP_examples[DemoIndex].DemoName);
-  //UTIL_LCD_DisplayStringAt(0, y_size/2 + 15, (uint8_t *)desc, CENTER_MODE);
-
-  UTIL_LCD_SetTextColor(UTIL_LCD_COLOR_RED);
-  UTIL_LCD_SetFont(&Font16);
-  sprintf((char* )time_str1, (const char*)"HAL_Delay Timing Test.");
-  UTIL_LCD_DisplayStringAt(0, (y_size/2 + 65), (uint8_t *)time_str1, CENTER_MODE);
-
+  return 0;
 }
 
 /**
