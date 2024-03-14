@@ -1,15 +1,4 @@
-main {
+zdej ce nimas bread borda se kaca obrne vsakic k prtisnes gumb
+za 90 stopinj v desno.
 
-    while(true) {
-
-        switch
-            case 1: spil
-            case 2: game over
-    }
-}
-
-spil {
-
-}
-
-game over
+funkcionalnost je enaka sam kolk gumbov mas prklolenih je drgac
