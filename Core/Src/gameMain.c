@@ -1,10 +1,16 @@
 #include "gameMain.h"
 #include "main.h"
+#include <stdlib.h>
 
-#define BUTTON_LEFT         GPIO_PIN_6 // A
-#define BUTTON_UP           GPIO_PIN_6 // B
-#define BUTTON_RIGHT        GPIO_PIN_8 // A
-#define BUTTON_DOWN         GPIO_PIN_7 // B
+#define BUTTON_LEFT         GPIO_PIN_6 // B
+#define BUTTON_RIGHT        GPIO_PIN_7 // B
+#define BUTTON_UP           GPIO_PIN_6 // A
+#define BUTTON_DOWN         GPIO_PIN_8 // A
+
+#define LEFT    1
+#define UP      2
+#define RIGHT   3
+#define DOWN    4
 
 // snake body list
 typedef struct node{
@@ -19,26 +25,24 @@ int gameStage = 0;
 
 // grid size
 int x_grid, y_grid;
-int cellSize = 17;
+int cellSize = 14;
 
 int x_border, y_border;
-int x_apple,  y_apple;
+int x_apple = NULL, y_apple = NULL;
 
-int snakeLength = 1;
-//          0: Gor
-// 3: Levo          1: Desno
-//          2: Dol
-int smer = -1;
+int snakeLength = 0;
+int smer;
 
 static void gameStart();
 static void game();
 static void gameOver();
 static void DrawCanvas();
 static void DrawGridCell();
-static uint32_t ButtonPressed(int GPIO, int pin);
+// static uint32_t ButtonPressed(int GPIO, int pin);
 static void resetVariables();
 static void addtoSnake(int x, int y, int new);
 static void Init_Buttons(void);
+static node_t* push(int x, int y);
 
 void gameMain() {
 
@@ -56,11 +60,6 @@ void gameMain() {
 
     x_border = (x_size - (x_grid * cellSize)) / 2; 
     y_border = (y_size - (y_grid * cellSize)) / 2; 
-
-    // create start node
-    struct node *newNode = (struct node*) malloc(sizeof(struct node));
-    head = newNode;
-    tail = newNode;
 
     /**
      * 1. Game
@@ -87,14 +86,14 @@ static void gameStart() {
 
     // 2. wait for user input
     while (!BSP_PB_GetState(BUTTON_USER_PIN)) { }
-
-     DrawGridCell(0, 0, 2);
     
     gameStage = 1;
 }
 
 // game logic
 static void game() {
+
+    DrawGridCell(0, 0, 1);
 
     // initial
     BSP_LED_Off(LED_GREEN);
@@ -104,69 +103,64 @@ static void game() {
     int x_new = head->x; 
     int y_new = head->y;
     
-    if (ButtonPressed(GPIOB, BUTTON_UP) && smer != 2)
-        smer = 0;
-    else if (ButtonPressed(GPIOA, BUTTON_RIGHT) && smer != 3)
-        smer = 1;
-    else if (ButtonPressed(GPIOB, BUTTON_DOWN)  && smer != 0)
-        smer = 2;
-    else if (ButtonPressed(GPIOA, BUTTON_LEFT)  && smer != 1)
-        smer = 3;
-    
-    if (smer > 3)
-        smer = 0;
+    if (HAL_GPIO_ReadPin(GPIOB, BUTTON_LEFT) && smer != RIGHT)
+        smer = LEFT;
+    if (HAL_GPIO_ReadPin(GPIOB, BUTTON_RIGHT) && smer != LEFT)
+        smer = RIGHT;
+    if (HAL_GPIO_ReadPin(GPIOA, BUTTON_DOWN) && smer != UP)
+        smer = DOWN;
+    if (HAL_GPIO_ReadPin(GPIOA, BUTTON_UP) && smer != DOWN)
+        smer = UP;
     
     // rabis 4 gumbe
-    if (smer == 0) 
-        y_new--;    
-    else if (smer == 1) 
-        x_new++;
-    else if (smer == 2) 
+    if (smer == DOWN) 
         y_new++;    
-    else if (smer == 3) 
+    else if (smer == RIGHT) 
+        x_new++;
+    else if (smer == UP) 
+        y_new--;    
+    else if (smer == LEFT) 
         x_new--;
     ////////////////////////////
 
     // Colision //
     ////////////////////////////
-    if (
-        x_new >= x_grid || x_new <= 0 ||
-        y_new >= y_grid || y_new <= 0
-    ) {
-        gameStage = 2;
-        return;
-    }
-    node_t* tempNode = head;
-    while (tempNode != NULL)
+    node_t* tmpNode = head->next;
+    while (tmpNode != NULL)
     {
         // if new location would hit the body
-        if (x_new == tempNode->x || y_new == tempNode->y) {
-            gameStage = 2;
+        if (x_new == tmpNode->x && y_new == tmpNode->y) {
+            gameStage = 0;
             return;
         }
         
-        tempNode = tempNode->next;
+        tmpNode = tmpNode->next;
     }
     ////////////////////////////
+
+    // naris nov jabuk
+    if (x_apple == NULL || y_apple == NULL) {
+        x_apple = rand() % x_grid;
+        y_apple = rand() % y_grid;
+        DrawGridCell(x_apple, y_apple, 3);
+    }
 
     // Apple //
     ////////////////////////////
     int appleCollision = 0;
     if (x_new == x_apple && y_new == y_apple) {
-        appleCollision = 1;
+        appleCollision = 2;
         snakeLength++;
         BSP_LED_On(LED_GREEN);
 
-        // naris nov jabuk
-        x_apple = rand() % x_grid;
-        y_apple = rand() % y_grid;
-        DrawGridCell(x_apple, y_apple, 3);
+        x_apple = NULL;
+        y_apple = NULL;
     }
     ////////////////////////////
 
     addtoSnake(x_new, y_new, appleCollision);
 
-    HAL_Delay(1000);
+    HAL_Delay(300);
 }
 
 static void gameOver() {
@@ -188,7 +182,7 @@ static void gameOver() {
     UTIL_LCD_DisplayStringAt(450, 500, (uint8_t *)sc, CENTER_MODE);
 
     // wait for 5 seconds
-    // HAL_Delay(5000);
+    HAL_Delay(5000);
     // back to start
     gameStage = 0;
 }
@@ -214,7 +208,7 @@ static void DrawGridCell(int x, int y, int type) {
         x < 0 || 
         y < 0           
     ) {
-        gameStage = 2;
+        gameStage = 0;
     }
 
     int x_pos = x * cellSize + x_border;
@@ -223,7 +217,7 @@ static void DrawGridCell(int x, int y, int type) {
     // snake Body
     if (type == 1) {
         // UTIL_LCD_DrawRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_LIGHTMAGENTA);
-        UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_LIGHTMAGENTA);
+        UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_ST_GREEN_LIGHT);
     }
     // snake Head
     else if (type == 2) {
@@ -241,16 +235,47 @@ static void DrawGridCell(int x, int y, int type) {
 }
 
 // SET == prtisnjen
-static uint32_t ButtonPressed(int GPIO, int pin) {
+// static uint32_t ButtonPressed(int GPIO, int pin) {
 
-    uint32_t startTime = HAL_GetTick();
+//     uint32_t startTime = HAL_GetTick();
     
-    int pressed = HAL_GPIO_ReadPin(GPIO, pin);
+//     int pressed = HAL_GPIO_ReadPin(GPIO, pin);
 
-    while (pressed == GPIO_PIN_SET)
-        pressed = HAL_GPIO_ReadPin(GPIO, pin);
+//     while (pressed == GPIO_PIN_SET)
+//         pressed = HAL_GPIO_ReadPin(GPIO, pin);
             
-    return HAL_GetTick() - startTime;
+//     return HAL_GetTick() - startTime;
+// }
+
+static node_t* push(int x, int y) {
+
+    node_t* newNode = (node_t*)malloc(sizeof(node_t));
+
+    newNode->next = NULL;
+
+    if (head == NULL) {
+        head = newNode;  
+        DrawGridCell(x, y, 2); 
+    } 
+    else {
+        DrawGridCell(x, y, 1); 
+    }
+
+    if (tail == NULL) {
+        tail = newNode;
+        newNode->prev = NULL;
+    }
+    else {
+        newNode->prev = tail;
+        tail = newNode;
+    }
+
+    newNode->x = x;
+    newNode->y = y;
+
+    snakeLength++;
+
+    return newNode;
 }
 
 static void resetVariables() {
@@ -258,8 +283,8 @@ static void resetVariables() {
     BSP_LED_Off(LED_GREEN);
     BSP_LED_Off(LED_RED);
 
-    // pobrisemo kaco
-    while (snakeLength > 1)
+    // pobrisemo kaco ce je prevelika
+    while (snakeLength > 3)
     {
         node_t* deletingNode = head;
         head = head->next;
@@ -267,17 +292,25 @@ static void resetVariables() {
         snakeLength--;
     }
 
-    head->x = x_grid / 2;
-    head->y = y_grid / 2;
-    head->next = NULL;
-    head->prev = NULL;
+    // create a snake
+    int x = x_grid / 2;
+    int y = y_grid / 2;
+
+    if (snakeLength == 0)
+        push(x, y);
+    if (snakeLength == 1)
+        push(x, y+1);
+    if (snakeLength == 2)
+        push(x, y+2);
+
+    smer = LEFT;
 }
 
 static void addtoSnake(int x, int y, int new) {
 
     // dodamo na head
     // v pomnilnik
-    struct node *newNode = (struct node*) malloc(sizeof(struct node));
+    node_t* newNode = (node_t*)malloc(sizeof(node_t));
     newNode->x = x;
     newNode->y = y;
 
@@ -317,9 +350,9 @@ static void Init_Buttons(void) {
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_PULLDOWN;
 
-    GPIO_InitStruct.Pin = BUTTON_LEFT | BUTTON_RIGHT;
+    GPIO_InitStruct.Pin = BUTTON_UP | BUTTON_DOWN;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = BUTTON_UP | BUTTON_DOWN;
+    GPIO_InitStruct.Pin = BUTTON_LEFT | BUTTON_RIGHT;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
