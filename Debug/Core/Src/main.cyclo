@@ -5,5 +5,5 @@
 ../Core/Src/main.c:276:13:CPU_CACHE_Enable	5
 ../Core/Src/main.c:290:13:MX_ADC3_Init	3
 ../Core/Src/main.c:348:13:MX_GPIO_Init	1
-../Core/Src/main.c:781:6:StartDefaultTask	1
-../Core/Src/main.c:801:6:Error_Handler	1
+../Core/Src/main.c:789:6:StartDefaultTask	1
+../Core/Src/main.c:809:6:Error_Handler	1

@@ -1,6 +1,11 @@
 #include "gameMain.h"
 #include "main.h"
 
+#define BUTTON_LEFT         GPIO_PIN_6 // A
+#define BUTTON_UP           GPIO_PIN_6 // B
+#define BUTTON_RIGHT        GPIO_PIN_8 // A
+#define BUTTON_DOWN         GPIO_PIN_7 // B
+
 // snake body list
 typedef struct node{
     int x, y;
@@ -8,9 +13,6 @@ typedef struct node{
 } node_t;
 
 node_t *head, *tail;
-
-
-
 
 uint32_t x_size, y_size;
 int gameStage = 0;
@@ -22,21 +24,25 @@ int cellSize = 17;
 int x_border, y_border;
 int x_apple,  y_apple;
 
-
 int snakeLength = 1;
-// 0 => Desno, 1 => Dol, 2 => Levo, 3 => Gor, 
-int smer = 0;
+//          0: Gor
+// 3: Levo          1: Desno
+//          2: Dol
+int smer = -1;
 
 static void gameStart();
 static void game();
 static void gameOver();
 static void DrawCanvas();
 static void DrawGridCell();
-static int ButtonPressed(int button);
+static uint32_t ButtonPressed(int GPIO, int pin);
 static void resetVariables();
 static void addtoSnake(int x, int y, int new);
+static void Init_Buttons(void);
 
 void gameMain() {
+
+    Init_Buttons();
 
     // LTCD setup
     BSP_LCD_GetXSize(0, &x_size);
@@ -81,6 +87,8 @@ static void gameStart() {
 
     // 2. wait for user input
     while (!BSP_PB_GetState(BUTTON_USER_PIN)) { }
+
+     DrawGridCell(0, 0, 2);
     
     gameStage = 1;
 }
@@ -91,27 +99,44 @@ static void game() {
     // initial
     BSP_LED_Off(LED_GREEN);
 
-
     // New Location //
     ////////////////////////////
-    int x_new, y_new;
-
-    // ce prtisnes gumb zamenjas smer za 90 v desno
-    if (ButtonPressed(BUTTON_USER_PIN)) {
-        // TODO nared smeri
-    }
+    int x_new = head->x; 
+    int y_new = head->y;
+    
+    if (ButtonPressed(GPIOB, BUTTON_UP) && smer != 2)
+        smer = 0;
+    else if (ButtonPressed(GPIOA, BUTTON_RIGHT) && smer != 3)
+        smer = 1;
+    else if (ButtonPressed(GPIOB, BUTTON_DOWN)  && smer != 0)
+        smer = 2;
+    else if (ButtonPressed(GPIOA, BUTTON_LEFT)  && smer != 1)
+        smer = 3;
+    
+    if (smer > 3)
+        smer = 0;
+    
+    // rabis 4 gumbe
+    if (smer == 0) 
+        y_new--;    
+    else if (smer == 1) 
+        x_new++;
+    else if (smer == 2) 
+        y_new++;    
+    else if (smer == 3) 
+        x_new--;
     ////////////////////////////
 
     // Colision //
     ////////////////////////////
     if (
         x_new >= x_grid || x_new <= 0 ||
-        y_new >= y_grid || y_new <= 0 ||
+        y_new >= y_grid || y_new <= 0
     ) {
         gameStage = 2;
         return;
     }
-    struct node *tempNode = head;
+    node_t* tempNode = head;
     while (tempNode != NULL)
     {
         // if new location would hit the body
@@ -130,6 +155,7 @@ static void game() {
     if (x_new == x_apple && y_new == y_apple) {
         appleCollision = 1;
         snakeLength++;
+        BSP_LED_On(LED_GREEN);
 
         // naris nov jabuk
         x_apple = rand() % x_grid;
@@ -140,7 +166,7 @@ static void game() {
 
     addtoSnake(x_new, y_new, appleCollision);
 
-    HAL_Delay(500);
+    HAL_Delay(1000);
 }
 
 static void gameOver() {
@@ -214,14 +240,17 @@ static void DrawGridCell(int x, int y, int type) {
     }
 }
 
-// todo nared da returna kolk je caku in odstej od delaya
-static int ButtonPressed(int button) {
+// SET == prtisnjen
+static uint32_t ButtonPressed(int GPIO, int pin) {
 
-    int buttonPressed = BSP_PB_GetState(button);
-    while (buttonPressed)
-        if (!BSP_PB_GetState(button))
-            return 1;
-    return 0;
+    uint32_t startTime = HAL_GetTick();
+    
+    int pressed = HAL_GPIO_ReadPin(GPIO, pin);
+
+    while (pressed == GPIO_PIN_SET)
+        pressed = HAL_GPIO_ReadPin(GPIO, pin);
+            
+    return HAL_GetTick() - startTime;
 }
 
 static void resetVariables() {
@@ -232,16 +261,16 @@ static void resetVariables() {
     // pobrisemo kaco
     while (snakeLength > 1)
     {
-        struct node *deletingNode = head;
+        node_t* deletingNode = head;
         head = head->next;
         free(deletingNode);
         snakeLength--;
     }
 
-    startNode->x = x_grid / 2;
-    startNode->y = y_grid / 2;
-    startNode->next = NULL;
-    startNode->prev = NULL;
+    head->x = x_grid / 2;
+    head->y = y_grid / 2;
+    head->next = NULL;
+    head->prev = NULL;
 }
 
 static void addtoSnake(int x, int y, int new) {
@@ -266,14 +295,31 @@ static void addtoSnake(int x, int y, int new) {
     // brisemo zadnjega ce nismo jabolka pojedl
     if (!new) {
         
-        struct node *deletingNode = last;
+        node_t* deletingNode = tail;
 
-        last->prev->next = NULL;    
-        last = last->prev;
+        tail->prev->next = NULL;    
+        tail = tail->prev;
 
         // z grida
         DrawGridCell(deletingNode->x, deletingNode->y, 0);
         // s pomnilnika
         free(deletingNode);
     }
+}
+
+static void Init_Buttons(void) {
+
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+   
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+
+    GPIO_InitStruct.Pin = BUTTON_LEFT | BUTTON_RIGHT;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = BUTTON_UP | BUTTON_DOWN;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }

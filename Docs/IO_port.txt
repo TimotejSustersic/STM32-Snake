@@ -8,7 +8,7 @@ Dodajanje novega GPIO sklopa
 
 Dodajanje Porta
 
-1. V main dodas BSSR (docs_registri - 543) vrednost porta za set in reset
+1. V main dodas BSRR (docs_registri - 543) vrednost porta za set in reset
 
 2. V INIT_GPIO_x doda MODER za ta port (docs_registri - 540) (00 - read, 01 - write)
     Clear (1 vse razen tja k pises)

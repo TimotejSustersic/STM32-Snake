@@ -1,6 +1,10 @@
-../Core/Src/gameMain.c:21:6:gameMain	3
-../Core/Src/gameMain.c:53:13:gameStart	2
-../Core/Src/gameMain.c:69:13:game	2
-../Core/Src/gameMain.c:80:13:gameOver	1
-../Core/Src/gameMain.c:100:13:DrawCanvas	3
-../Core/Src/gameMain.c:115:13:DrawGridCell	9
+../Core/Src/gameMain.c:43:6:gameMain	3
+../Core/Src/gameMain.c:82:13:gameStart	2
+../Core/Src/gameMain.c:97:13:game	6
+../Core/Src/gameMain.c:193:13:gameOver	1
+../Core/Src/gameMain.c:217:13:DrawCanvas	3
+../Core/Src/gameMain.c:229:13:DrawGridCell	9
+../Core/Src/gameMain.c:264:17:ButtonPressed	2
+../Core/Src/gameMain.c:276:13:resetVariables	4
+../Core/Src/gameMain.c:296:13:addtoSnake	2
+../Core/Src/gameMain.c:330:13:Init_Buttons	1
