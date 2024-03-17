@@ -21,14 +21,18 @@ typedef struct node{
 node_t *head, *tail;
 
 uint32_t x_size, y_size;
-int gameStage = 0;
+
+#define START   0
+#define GAME    1
+#define OVER    2
+int gameStage = START;
 
 // grid size
 int x_grid, y_grid;
-int cellSize = 14;
+int cellSize = 11;
 
 int x_border, y_border;
-int x_apple = NULL, y_apple = NULL;
+int x_apple, y_apple;
 
 int snakeLength = 0;
 int smer;
@@ -42,6 +46,8 @@ static void DrawGridCell();
 static void resetVariables();
 static void addtoSnake(int x, int y, int new);
 static void Init_Buttons(void);
+static void newApple(void);
+static int InBody(int x, int y);
 static node_t* push(int x, int y);
 
 void gameMain() {
@@ -68,9 +74,9 @@ void gameMain() {
     while (1)
     {
         // game
-        if (gameStage == 0)
+        if (gameStage == START)
             gameStart();
-        else if (gameStage == 1)
+        else if (gameStage == GAME)
             game();
         else
             gameOver();
@@ -80,20 +86,29 @@ void gameMain() {
 
 static void gameStart() {
 
-    // 1. Draw shit and reset variables
-    resetVariables();
-    DrawCanvas();
+    // 1. Draw shit and reset variables    
+
+    UTIL_LCD_Clear(UTIL_LCD_COLOR_BLACK);
+    UTIL_LCD_SetTextColor(UTIL_LCD_COLOR_ORANGE);
+    UTIL_LCD_SetFont(&Font24);
+    UTIL_LCD_FillRect(x_size/5, y_size/4, 3*x_size/5, y_size/2, UTIL_LCD_COLOR_WHITE);
+    UTIL_LCD_DisplayStringAt(0, (y_size/2) - 12, (uint8_t *)"Start Game", CENTER_MODE);
+
+    UTIL_LCD_SetTextColor(UTIL_LCD_COLOR_BLUE);
+    UTIL_LCD_SetFont(&Font12);
+    UTIL_LCD_DisplayStringAt(0, (y_size/2) + 12, (uint8_t *)"Press the blue button", CENTER_MODE);
 
     // 2. wait for user input
     while (!BSP_PB_GetState(BUTTON_USER_PIN)) { }
+
+    DrawCanvas();
+    resetVariables();
     
-    gameStage = 1;
+    gameStage = GAME;
 }
 
 // game logic
 static void game() {
-
-    DrawGridCell(0, 0, 1);
 
     // initial
     BSP_LED_Off(LED_GREEN);
@@ -125,73 +140,85 @@ static void game() {
 
     // Colision //
     ////////////////////////////
-    node_t* tmpNode = head->next;
-    while (tmpNode != NULL)
-    {
-        // if new location would hit the body
-        if (x_new == tmpNode->x && y_new == tmpNode->y) {
-            gameStage = 0;
-            return;
-        }
-        
-        tmpNode = tmpNode->next;
+    if (InBody(x_new, y_new)) {
+        gameStage = OVER;
+        return;
+    }
+
+
+    // if we want to draw off grid its an error and game over
+    if (
+        x_new >= x_grid || 
+        y_new >= y_grid ||
+        x_new < 0 || 
+        y_new < 0           
+    ) {
+        gameStage = OVER;
+        return;
     }
     ////////////////////////////
-
-    // naris nov jabuk
-    if (x_apple == NULL || y_apple == NULL) {
-        x_apple = rand() % x_grid;
-        y_apple = rand() % y_grid;
-        DrawGridCell(x_apple, y_apple, 3);
-    }
 
     // Apple //
     ////////////////////////////
     int appleCollision = 0;
     if (x_new == x_apple && y_new == y_apple) {
-        appleCollision = 2;
+        appleCollision++;
         snakeLength++;
         BSP_LED_On(LED_GREEN);
 
-        x_apple = NULL;
-        y_apple = NULL;
+        newApple();
     }
     ////////////////////////////
 
     addtoSnake(x_new, y_new, appleCollision);
 
-    HAL_Delay(300);
+    HAL_Delay(150);
 }
-
+ 
 static void gameOver() {
-
-    // Draw Game over and display score
-    UTIL_LCD_Clear(UTIL_LCD_COLOR_WHITE);
 
     BSP_LED_Off(LED_GREEN);
     BSP_LED_On(LED_RED);
 
-    UTIL_LCD_SetFont(&Font16);
-    UTIL_LCD_DrawRect(400, 400, 400, 50, UTIL_LCD_COLOR_BLACK);
+    // first wait for 3 seconds to see error
+    HAL_Delay(2000);
 
-    char go;
-    sprintf(go, "Game Over");
-    UTIL_LCD_DisplayStringAt(450, 450, (uint8_t *)go, CENTER_MODE);
+    UTIL_LCD_Clear(UTIL_LCD_COLOR_RED);
+    UTIL_LCD_FillRect(x_size/5, y_size/4, 3*x_size/5, y_size/2, UTIL_LCD_COLOR_WHITE);
+
+    UTIL_LCD_SetTextColor(UTIL_LCD_COLOR_RED);
+    UTIL_LCD_SetFont(&Font24);    
+    UTIL_LCD_DisplayStringAt(0, (y_size/2) - 12, (uint8_t *)"GAME OVER!", CENTER_MODE);
+
+    UTIL_LCD_SetTextColor(UTIL_LCD_COLOR_BLACK);
+    UTIL_LCD_SetFont(&Font16);
     char sc;
-    sprintf(sc, "Score: %d", snakeLength);
-    UTIL_LCD_DisplayStringAt(450, 500, (uint8_t *)sc, CENTER_MODE);
+    sprintf(sc, "Score: %d", snakeLength - 3);
+    UTIL_LCD_DisplayStringAt(0, (y_size/2) + 12, (uint8_t *)sc, CENTER_MODE);
 
     // wait for 5 seconds
     HAL_Delay(5000);
     // back to start
-    gameStage = 0;
+    gameStage = START;
+}
+
+static void newApple() {
+
+    x_apple = rand() % x_grid;
+    y_apple = rand() % y_grid;
+
+    while (InBody(x_apple, y_apple)) {
+        x_apple = rand() % x_grid;
+        y_apple = rand() % y_grid;
+    }
+    DrawGridCell(x_apple, y_apple, 3);
 }
 
 static void DrawCanvas() {    
 
     UTIL_LCD_Clear(UTIL_LCD_COLOR_BLACK);
     // main platform
-    UTIL_LCD_DrawRect(x_border, y_border, x_size - 2*x_border, y_size - 2*y_border, UTIL_LCD_COLOR_WHITE);
+    UTIL_LCD_DrawRect(x_border, y_border, x_size - 2*x_border, y_size - 2*y_border, 0xFF070707UL);
 
     // grid
     for (int i = 0; i < x_grid; i++) 
@@ -201,31 +228,22 @@ static void DrawCanvas() {
 
 static void DrawGridCell(int x, int y, int type) {
 
-    // if we want to draw off grid its an error and game over
-    if (
-        x >= x_grid || 
-        y >= y_grid ||
-        x < 0 || 
-        y < 0           
-    ) {
-        gameStage = 0;
-    }
-
     int x_pos = x * cellSize + x_border;
     int y_pos = y * cellSize + y_border;
 
     // snake Body
     if (type == 1) {
         // UTIL_LCD_DrawRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_LIGHTMAGENTA);
-        UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_ST_GREEN_LIGHT);
+        UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_GREEN);
     }
     // snake Head
     else if (type == 2) {
-        UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_MAGENTA);
+        UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_DARKGREEN);
+        UTIL_LCD_DrawRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_GREEN);
     }
     // apple
     else if (type == 3) {
-        UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_DARKRED);
+        UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_RED);
     }
     // empty cell
     else if (type == 0) {
@@ -246,6 +264,20 @@ static void DrawGridCell(int x, int y, int type) {
             
 //     return HAL_GetTick() - startTime;
 // }
+
+static int InBody(int x, int y) {
+
+    node_t* tmpNode = head->next;
+    while (tmpNode != NULL)
+    {
+        // if location would hit the body
+        if (x == tmpNode->x && y == tmpNode->y) 
+            return 1;
+        
+        tmpNode = tmpNode->next;
+    }
+    return 0;
+}
 
 static node_t* push(int x, int y) {
 
@@ -284,7 +316,7 @@ static void resetVariables() {
     BSP_LED_Off(LED_RED);
 
     // pobrisemo kaco ce je prevelika
-    while (snakeLength > 3)
+    while (snakeLength > 1)
     {
         node_t* deletingNode = head;
         head = head->next;
@@ -298,11 +330,15 @@ static void resetVariables() {
 
     if (snakeLength == 0)
         push(x, y);
-    if (snakeLength == 1)
+    if (snakeLength == 1) {
+        head->x = x;
+        head->y = y;
         push(x, y+1);
+    }
     if (snakeLength == 2)
         push(x, y+2);
 
+    newApple();
     smer = LEFT;
 }
 
