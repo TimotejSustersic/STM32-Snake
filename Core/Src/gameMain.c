@@ -12,6 +12,11 @@
 #define RIGHT   3
 #define DOWN    4
 
+#define BODY    1
+#define HEAD    2
+#define APPLE   3
+#define EMPTY   4
+
 // snake body list
 typedef struct node{
     int x, y;
@@ -211,19 +216,19 @@ static void newApple() {
         x_apple = rand() % x_grid;
         y_apple = rand() % y_grid;
     }
-    DrawGridCell(x_apple, y_apple, 3);
+    DrawGridCell(x_apple, y_apple, APPLE);
 }
 
 static void DrawCanvas() {    
 
     UTIL_LCD_Clear(UTIL_LCD_COLOR_BLACK);
     // main platform
-    UTIL_LCD_DrawRect(x_border, y_border, x_size - 2*x_border, y_size - 2*y_border, 0xFF070707UL);
+    // UTIL_LCD_DrawRect(x_border, y_border, x_size - 2*x_border, y_size - 2*y_border, 0xFF070707UL);
 
     // grid
     for (int i = 0; i < x_grid; i++) 
         for (int j = 0; j < y_grid; j++) 
-            DrawGridCell(i, j, 0);
+            DrawGridCell(i, j, EMPTY);
 }
 
 static void DrawGridCell(int x, int y, int type) {
@@ -232,21 +237,21 @@ static void DrawGridCell(int x, int y, int type) {
     int y_pos = y * cellSize + y_border;
 
     // snake Body
-    if (type == 1) {
+    if (type == BODY) {
         // UTIL_LCD_DrawRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_LIGHTMAGENTA);
         UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_GREEN);
     }
     // snake Head
-    else if (type == 2) {
+    else if (type == HEAD) {
         UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_DARKGREEN);
         UTIL_LCD_DrawRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_GREEN);
     }
     // apple
-    else if (type == 3) {
+    else if (type == APPLE) {
         UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_RED);
     }
     // empty cell
-    else if (type == 0) {
+    else if (type == EMPTY) {
         UTIL_LCD_FillRect(x_pos, y_pos, cellSize, cellSize, UTIL_LCD_COLOR_BLACK);
         UTIL_LCD_DrawRect(x_pos, y_pos, cellSize, cellSize, 0xFF070707UL);
     }
@@ -287,10 +292,10 @@ static node_t* push(int x, int y) {
 
     if (head == NULL) {
         head = newNode;  
-        DrawGridCell(x, y, 2); 
+        DrawGridCell(x, y, HEAD); 
     } 
     else {
-        DrawGridCell(x, y, 1); 
+        DrawGridCell(x, y, BODY); 
     }
 
     if (tail == NULL) {
@@ -356,8 +361,8 @@ static void addtoSnake(int x, int y, int new) {
     head = newNode;
 
     // na grid
-    DrawGridCell(newNode->x, newNode->y, 2); // head
-    DrawGridCell(newNode->next->x, newNode->next->y, 1); // change head color to body color
+    DrawGridCell(newNode->x, newNode->y, HEAD); // head
+    DrawGridCell(newNode->next->x, newNode->next->y, BODY); // change head color to body color
     ///////////////////
 
     ///////////////////
@@ -370,7 +375,7 @@ static void addtoSnake(int x, int y, int new) {
         tail = tail->prev;
 
         // z grida
-        DrawGridCell(deletingNode->x, deletingNode->y, 0);
+        DrawGridCell(deletingNode->x, deletingNode->y, EMPTY);
         // s pomnilnika
         free(deletingNode);
     }
